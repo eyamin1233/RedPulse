@@ -21,6 +21,21 @@ endif;
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<script>
+    function togglePassword(id, icon) {
+    const input = document.getElementById(id);
+
+    if (!input) return;
+
+    const isHidden = input.type === "password";
+    input.type = isHidden ? "text" : "password";
+
+    icon.classList.toggle("fa-eye");
+    icon.classList.toggle("fa-eye-slash");
+}
+</script>
     <style>
         * {
             margin: 0;
@@ -76,6 +91,25 @@ endif;
             color:rgb(255, 255, 255) !important;
             background-color: rgba(255, 255, 255, 0.2);
             border-radius: 20px;
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .toggle-eye {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #888;
+            font-size: 18px;
+            transition: 0.3s ease;
+        }
+
+        .toggle-eye:hover {
+            color: rgb(241, 8, 4);
         }
 
         
@@ -311,7 +345,10 @@ endif;
         </div>
         <div class="form-group">
           <label for="bb_password">Password:</label>
-          <input type="password" class="form-control" id="bb_password" name="password" required oninput="checkBBPasswordStrength()">
+          <div class="password-wrapper">
+                        <input type="password" class="form-control" id="password" name="password" required oninput="checkPasswordStrength()">
+                        <i class="fa fa-eye toggle-eye" onclick="togglePassword('password', this)"></i>
+                    </div>
           <small class="form-text text-muted">
             Must be at least 8 characters, include uppercase, lowercase, number, and a special character.
           </small>
@@ -319,8 +356,11 @@ endif;
         </div>
         <div class="form-group">
           <label for="bb_confirmPassword">Confirm Password:</label>
-          <input type="password" class="form-control" id="bb_confirmPassword" name="confirmPassword" required>
-          <small id="bb_confirmPasswordError" class="text-danger"></small>
+          <div class="password-wrapper">
+                    <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                    <small id="confirmPasswordError" class="text-danger"></small>
+                    <i class="fa fa-eye toggle-eye" onclick="togglePassword('confirmPassword', this)"></i>
+                    </div>
         </div>
       </div>
     </div>
