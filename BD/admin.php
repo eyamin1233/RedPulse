@@ -5,6 +5,22 @@
     <title>Admin Login - RedPulse</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<script>
+    function togglePassword(id, icon) {
+    const input = document.getElementById(id);
+
+    if (!input) return;
+
+    const isHidden = input.type === "password";
+    input.type = isHidden ? "text" : "password";
+
+    icon.classList.toggle("fa-eye");
+    icon.classList.toggle("fa-eye-slash");
+}
+</script>
+
     <style>
         body {
             background: radial-gradient(circle,rgb(255, 99, 90) 0%,rgb(241, 33, 33) 100%);
@@ -74,7 +90,29 @@
             margin-bottom: 25px;
         }
         
-        
+        .password-wrapper {
+            position: relative;
+        }
+
+        .toggle-eye {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #888;
+            font-size: 18px;
+            transition: 0.3s ease;
+       }
+
+.toggle-eye:hover {
+    color: rgb(241, 8, 4);
+}
+
+.form-control {
+    padding-right: 42px;
+}
+
 
         .form-control {
             background: white;
@@ -294,7 +332,11 @@
 
             <div class="mb-3">
                 <label for="password" class="form-label">Admin Password</label>
+                <div class="password-wrapper">
                 <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+
+                <i class="fa fa-eye toggle-eye" onclick="togglePassword('password', this)"></i>
+            </div>
             </div>
 
             <button type="submit" class="btn btn-login">SIGN IN</button>
