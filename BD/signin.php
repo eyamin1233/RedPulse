@@ -14,8 +14,26 @@ if (isset($_SESSION['flash_message'])) {
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+function togglePassword(id, icon) {
+    const input = document.getElementById(id);
+
+    if (input.type === "password") {
+        input.type = "text";
+        icon.classList.remove("fa-eye");
+        icon.classList.add("fa-eye-slash");
+    } else {
+        input.type = "password";
+        icon.classList.remove("fa-eye-slash");
+        icon.classList.add("fa-eye");
+    }
+}
+</script>
+
     <style>
         * {
             margin: 0;
@@ -161,19 +179,41 @@ if (isset($_SESSION['flash_message'])) {
             background-color: rgb(248, 244, 244);
             transform: translateY(-5px);
         }
+        .auth-links {
+            text-align: center;
+            margin-top: 20px;
+        }
 
-        /* Container for the small text blocks */
-.auth-links {
-  text-align: center;
-  margin-top: 20px;
+        .auth-links small {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1rem;
+            color: #87cefa;
+        }
+
+        .password-wrapper {
+    position: relative;
 }
-/* Style for the <small> tags */
-.auth-links small {
-  display: block;
-  margin-bottom: 10px;
-  font-size: 1rem;
-  color: #87cefa;
+
+.toggle-eye {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #888;
+    font-size: 18px;
+    transition: 0.3s ease;
 }
+
+.toggle-eye:hover {
+    color: #dc3545;
+}
+
+.form-control {
+    padding-right: 40px;
+}
+
 
 
         .floating-drops {
@@ -343,20 +383,28 @@ if (isset($_SESSION['flash_message'])) {
         </div>
 
         <div class="form-group">
-            <label for="password">Password</label>
-            <input 
-                type="password" 
-                class="form-control <?= isset($_SESSION['password_error']) && $_SESSION['password_error'] ? 'is-invalid' : '' ?>" 
-                id="password" 
-                name="password" 
-                placeholder="Enter Password" 
-                required>
-            <?php if (isset($_SESSION['password_error']) && $_SESSION['password_error']): ?>
-    <div class="alert alert-danger py-1 px-2 mt-2 mb-0 rounded" style="font-size: 0.9rem;">
-        <?= $_SESSION['password_error']; ?>
+    <label for="password">Password</label>
+
+    <div class="password-wrapper">
+        <input 
+            type="password" 
+            class="form-control <?= isset($_SESSION['password_error']) && $_SESSION['password_error'] ? 'is-invalid' : '' ?>" 
+            id="password" 
+            name="password" 
+            placeholder="Enter Password" 
+            required>
+
+        <i class="fa-solid fa-eye toggle-eye"
+           onclick="togglePassword('password', this)"></i>
     </div>
-<?php endif; ?>
+
+    <?php if (isset($_SESSION['password_error']) && $_SESSION['password_error']): ?>
+        <div class="alert alert-danger py-1 px-2 mt-2 mb-0 rounded" style="font-size: 0.9rem;">
+            <?= $_SESSION['password_error']; ?>
         </div>
+    <?php endif; ?>
+</div>
+
 
          <!-- ✅ Role Selection Dropdown -->
         <div class="form-group mt-3">
