@@ -35,7 +35,7 @@ if (!$donor) {
             r.location,
             r.received_date
         FROM donations d
-        INNER JOIN recipient r ON d.request_id = r.request_id
+        INNER JOIN recipient r ON d.recipient_id = r.id
         WHERE d.donor_id = :donor_id
         ORDER BY r.received_date DESC
     ");
@@ -55,7 +55,7 @@ catch (PDOException $e) {
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
         body {
-            background: linear-gradient(135deg,rgb(248, 35, 35));
+            background: radial-gradient(circle,rgb(255, 99, 90) 0%,rgb(241, 33, 33) 100%);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: #333;
         }
@@ -276,7 +276,7 @@ catch (PDOException $e) {
         <a class="nav-link" href="profile.php">Profile</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link active" href="profile.php">History</a>
+        <a class="nav-link active" href="donations_list.php">History</a>
     </li>
 </ul>
 
