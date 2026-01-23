@@ -13,64 +13,96 @@ $donorBloodType = $_SESSION['bloodtype'];
 $donorLocation = $_SESSION['location'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $recipient_name = $_POST['recipient_name'];
-    $recipient_contact = $_POST['recipient_contact'];
+
+    $recipient_name     = $_POST['recipient_name'];
+    $recipient_contact  = $_POST['recipient_contact'];
     $donated_blood_type = $_POST['donated_blood_type'];
-    $donation_location = $_POST['donation_location'];
-    $donation_date = $_POST['donation_date'];
+    $donation_location  = $_POST['donation_location'];
+    $donation_date      = $_POST['donation_date'];
 
     try {
         $pdo = new PDO("mysql:host=localhost;dbname=blooddonationmanagementsystem", "root", "");
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->beginTransaction();
 
-        // Insert into donors table
-        $stmt2 = $pdo->prepare("INSERT INTO donors (user_id, name, location, bloodtype, lastdonationdate, created_at) 
-                                VALUES (:user_id, :name, :location, :bloodtype, :lastdonationdate, NOW())");
-        $stmt2->execute([
-            ':user_id' => $userId,
-            ':name' => $donorName,
-            ':location' => $donorLocation,
-            ':bloodtype' => $donorBloodType,
-            ':lastdonationdate' => $donation_date
-        ]);
-        $donor_id = $pdo->lastInsertId(); // get inserted donor id
+        // 1️⃣ Check if donor already exists
+        $check = $pdo->prepare("SELECT id FROM donors WHERE user_id = ?");
+        $check->execute([$userId]);
 
-        // Insert into recipient table
-        $stmt3 = $pdo->prepare("INSERT INTO recipient (user_id, recipient_name, bloodtype, contact, location, received_date) 
-                                VALUES (:user_id, :recipient_name, :bloodtype, :contact, :location, :received_date)");
-        $stmt3->execute([
-            ':user_id' => $userId,
-            ':recipient_name' => $recipient_name,
-            ':bloodtype' => $donated_blood_type,
-            ':contact' => $recipient_contact,
-            ':location' => $donation_location,
-            ':received_date' => $donation_date
-        ]);
-        $request_id = $pdo->lastInsertId(); // get inserted recipient id
 
-        // Now insert into donations table
-        $stmt5 = $pdo->prepare("INSERT INTO donations (donor_id, request_id, donated_at) 
-                                VALUES (:donor_id, :request_id, :donated_at)");
+        if ($check->rowCount() > 0) {
+            $donor_id = $check->fetchColumn();
+
+            // Update donor last donation date
+            $updateDonor = $pdo->prepare("UPDATE donors SET lastdonationdate = ? WHERE id = ?");
+            $updateDonor->execute([$donation_date, $donor_id]);
+        } else {
+            // Insert donor once only
+            $stmt2 = $pdo->prepare("
+                INSERT INTO donors 
+                (user_id, name, location, bloodtype, lastdonationdate, created_at) 
+                VALUES (?, ?, ?, ?, ?, NOW())
+            ");
+            $stmt2->execute([
+                $userId,
+                $donorName,
+                $donorLocation,
+                $donorBloodType,
+                $donation_date
+            ]);
+            $donor_id = $pdo->lastInsertId();
+        }
+
+        // 2️⃣ Insert recipient
+$stmt3 = $pdo->prepare("
+    INSERT INTO recipient 
+    (user_id, recipient_name, bloodtype, contact, location, received_date) 
+    VALUES (?, ?, ?, ?, ?, ?)
+");
+
+$stmt3->execute([
+    $userId,
+    $recipient_name,
+    $donated_blood_type,
+    $recipient_contact,
+    $donation_location,
+    $donation_date
+]);
+
+$recipient_id = $pdo->lastInsertId();
+
+
+        // 3️⃣ Insert donation record
+        $stmt5 = $pdo->prepare("
+            INSERT INTO donations 
+            (donor_id, recipient_id, donated_at)
+            VALUES (?, ?, ?)
+        ");
         $stmt5->execute([
-            ':donor_id' => $donor_id,
-            ':request_id' => $request_id,
-            ':donated_at' => $donation_date
+            $donor_id,
+            $recipient_id,
+            $donation_date
         ]);
 
-        // Update user's last donation date
-        $stmt4 = $pdo->prepare("UPDATE user SET lastdonationdate = :lastdate WHERE id = :id");
-        $stmt4->execute([
-            ':lastdate' => $donation_date,
-            ':id' => $userId
-        ]);
+        // 4️⃣ Update user last donation date
+        $stmt4 = $pdo->prepare("
+            UPDATE user 
+            SET lastdonationdate = ? 
+            WHERE id = ?
+        ");
+        $stmt4->execute([$donation_date, $userId]);
+
+        $pdo->commit();
 
         echo "<script>alert('Donation submitted successfully!'); location.assign('donations_list.php');</script>";
         exit();
 
     } catch (PDOException $e) {
+        $pdo->rollBack();
         echo "<script>alert('Database error: " . $e->getMessage() . "');</script>";
     }
 }
+
 ?>
 
 <!DOCTYPE html>
@@ -80,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
         body {
-            background: linear-gradient(135deg, rgb(248, 60, 60));
+            background: radial-gradient(circle,rgb(255, 99, 90) 0%,rgb(241, 33, 33) 100%);
             color: #fff;
             font-family: Arial, sans-serif;
         }
@@ -310,7 +342,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <a class="nav-link" href="profile.php">Profile</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link active" href="profile.php">Form</a>
+        <a class="nav-link active" href="donations.php">Form</a>
     </li>
     
 </ul>
@@ -319,7 +351,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </nav>
     <div class="container">
         <h2 class="text-center">Blood Donation Form</h2>
-        <form method="post" action="">
+        <form method="POST" action="">
             <div class="form-group">
                 <label for="recipient_name">Recipient Name:</label>
                 <input type="text" class="form-control" id="recipient_name" name="recipient_name" placeholder="Enter Name" required>
