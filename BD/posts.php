@@ -14,6 +14,25 @@ $stmt->execute([':id' => $user_id]);
 $userData = $stmt->fetch(PDO::FETCH_ASSOC);
 $user_bloodtype = $userData['bloodtype'];
 
+// Fetch user's last donation date
+$stmt = $conn->prepare("SELECT lastdonationdate FROM user WHERE id = :id");
+$stmt->execute([':id' => $user_id]);
+$userDonationData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$lastDonation = $userDonationData['lastdonationdate'];
+$isEligible = true;
+
+if (!empty($lastDonation)) {
+    $last = new DateTime($lastDonation);
+    $today = new DateTime();
+    $diffDays = $today->diff($last)->days;
+
+    if ($diffDays < 90) {
+        $isEligible = false;
+    }
+}
+
+
 
 // Check if user has made a request within the last 24 hours
 $stmt = $conn->prepare("
@@ -628,11 +647,16 @@ $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $hasDonated = $checkDonation->fetchColumn();
     ?>
     <?php if (!$hasDonated): ?>
-    <?php if ($user_bloodtype === $request['bloodtype']): ?>
-        <a href="donate_form.php?request_id=<?= $request['id'] ?>" class="btn btn-primary">Donate</a>
-    <?php else: ?>
-        <button class="btn btn-warning" disabled>Blood type mismatch</button>
-    <?php endif; ?>
+    <?php if ($user_bloodtype === $request['bloodtype'] && $isEligible): ?>
+    <a href="donate_form.php?request_id=<?= $request['id'] ?>" class="btn btn-primary">Donate</a>
+
+<?php elseif ($user_bloodtype === $request['bloodtype'] && !$isEligible): ?>
+    <button class="btn btn-secondary" disabled>Not Eligible Yet</button>
+
+<?php else: ?>
+    <button class="btn btn-warning" disabled>Blood type mismatch</button>
+<?php endif; ?>
+
 <?php else: ?>
     <button class="btn btn-secondary" disabled>Already submitted</button>
 <?php endif; ?>
