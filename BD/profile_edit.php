@@ -66,13 +66,19 @@ $currentUser = $stmt->fetch(PDO::FETCH_ASSOC);
         $stmt = $conn->prepare($update_query);
         $stmt->execute($params);
 
-        // Optional: update session values if needed
-        echo "<script>
-                alert('Profile updated successfully!');
-                location.assign('profile.php');
-              </script>";
+        $_SESSION['profile_message'] = "Profile updated successfully! Redirecting to profile...";
+$_SESSION['profile_message_type'] = "success";
+$_SESSION['profile_redirect'] = true;
+header("Location: profile_edit.php");
+exit();
+
+
     } else {
-        echo "<script>alert('No changes submitted.');</script>";
+        $_SESSION['profile_message'] = "No changes were submitted!";
+$_SESSION['profile_message_type'] = "warning";
+header("Location: profile_edit.php");
+exit();
+
     }
 
 
@@ -359,9 +365,63 @@ $currentUser = $stmt->fetch(PDO::FETCH_ASSOC);
                 text-shadow: 0 0 10px rgba(255, 0, 0, 1);
             }
         }
+
+        .top-alert {
+    position: fixed;
+    top: -80px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 300px;
+    max-width: 90%;
+    padding: 14px 22px;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+    color: white;
+    z-index: 99999;
+    animation: slideDown 0.6s ease forwards, fadeOut 0.6s ease 3s forwards;
+}
+
+.top-alert.success {
+    background: linear-gradient(135deg, #00c853, #00e676);
+}
+
+.top-alert.warning {
+    background: linear-gradient(135deg, #ff9100, #ffab40);
+}
+
+.top-alert.error {
+    background: linear-gradient(135deg, #ff1744, #ff5252);
+}
+
+@keyframes slideDown {
+    to { top: 20px; }
+}
+
+@keyframes fadeOut {
+    to { opacity: 0; }
+}
+
     </style>
 </head>
 <body>
+
+<?php if(isset($_SESSION['profile_message'])): ?>
+<div id="topAlert" class="top-alert <?= $_SESSION['profile_message_type'] ?>">
+    <?= $_SESSION['profile_message'] ?>
+</div>
+<?php unset($_SESSION['profile_message'], $_SESSION['profile_message_type']); endif; ?>
+
+<?php if(isset($_SESSION['profile_redirect'])): ?>
+<script>
+    setTimeout(() => {
+        window.location.href = "profile.php";
+    }, 2000);
+</script>
+<?php unset($_SESSION['profile_redirect']); endif; ?>
+
+
 
 <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <a class="navbar-brand">
