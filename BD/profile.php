@@ -1,6 +1,14 @@
 <?php
 session_start();
 
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require 'PHPMailer/src/Exception.php';
+require 'PHPMailer/src/PHPMailer.php';
+require 'PHPMailer/src/SMTP.php';
+
+
 if (!isset($_SESSION['user_id'])) {
     // Redirect to login page if user is not logged in
     echo "<script>location.assign('profile.php');</script>";
@@ -27,8 +35,22 @@ try {
         $totalDonations = $stmt->fetchColumn();
     }
 
+    // Fetch leaderboard (top 3)
+    $stmtLeaderboard = $pdo->prepare("
+        SELECT u.name, COUNT(don.id) as donation_count 
+        FROM user u
+        LEFT JOIN donors d ON u.id = d.user_id
+        LEFT JOIN donations don ON d.id = don.donor_id
+        GROUP BY u.id, u.name
+        ORDER BY donation_count DESC
+        LIMIT 3
+    ");
+    $stmtLeaderboard->execute();
+    $leaderboard = $stmtLeaderboard->fetchAll(PDO::FETCH_ASSOC);
+
 } catch (PDOException $e) {
     $totalDonations = 0;
+    $leaderboard = [];
 }
 
 // Fetch latest user data from database
@@ -51,6 +73,84 @@ $nextDonationDate = date('Y-m-d', strtotime($lastdonationdate . ' + 3 months'));
 // Determine eligibility (Eligible if next donation date is today or earlier)
 $isEligible = (strtotime($nextDonationDate) <= time());
 
+// Calculate days since last donation
+$daysSinceLastDonation = floor((time() - strtotime($lastdonationdate)) / (60 * 60 * 24));
+
+// Calculate estimated blood donated (assuming 450ml per donation)
+$totalBloodDonated = $totalDonations * 450;
+
+// Calculate lives potentially saved (1 donation can save up to 3 lives)
+$livesSaved = $totalDonations * 3;
+
+// Calculate progress to next badge
+$nextBadge = 1;
+$progressPercent = 0;
+if ($totalDonations >= 20) {
+    $nextBadge = 20;
+    $progressPercent = 100;
+} elseif ($totalDonations >= 10) {
+    $nextBadge = 20;
+    $progressPercent = ($totalDonations / 20) * 100;
+} elseif ($totalDonations >= 5) {
+    $nextBadge = 10;
+    $progressPercent = ($totalDonations / 10) * 100;
+} elseif ($totalDonations >= 1) {
+    $nextBadge = 5;
+    $progressPercent = ($totalDonations / 5) * 100;
+} else {
+    $nextBadge = 1;
+    $progressPercent = 0;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['invite_email'])) {
+
+    $inviteEmail = filter_var($_POST['invite_email'], FILTER_SANITIZE_EMAIL);
+
+    if (filter_var($inviteEmail, FILTER_VALIDATE_EMAIL)) {
+
+        $mail = new PHPMailer(true);
+
+        try {
+            $mail->isSMTP();
+            $mail->Host       = 'smtp.gmail.com';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = 'ehossain213174@bscse.uiu.ac.bd';
+            $mail->Password   = 'luhp botx ralk byej';
+            $mail->SMTPSecure = 'tls';
+            $mail->Port       = 587;
+
+            $mail->setFrom('ehossain213174@bscse.uiu.ac.bd', 'RedPulse');
+            $mail->addAddress($inviteEmail);
+
+            $mail->isHTML(false);
+            $mail->Subject = "Join RedPulse - Save Lives Through Blood Donation";
+
+            $mail->Body =
+"Hello,
+
+{$name} has invited you to join RedPulse.
+
+{$name} has already made {$totalDonations} donation(s)
+and saved approximately {$livesSaved} lives.
+
+Join us in saving lives.
+
+Best regards,
+RedPulse Team";
+
+            $mail->send();
+            $inviteSuccess = "Invitation sent successfully!";
+
+        } catch (Exception $e) {
+            $inviteError = "Mailer Error: " . $mail->ErrorInfo;
+        }
+
+    } else {
+        $inviteError = "Invalid email address.";
+    }
+}
+
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -71,7 +171,7 @@ $isEligible = (strtotime($nextDonationDate) <= time());
             left: -350px;
             top: 75px;
             width: 320px;
-            height: calc(75% - 70px);
+            height: calc(80% - 70px);
             background: #111;
             padding: 25px;
             transition: 0.4s;
@@ -173,46 +273,46 @@ $isEligible = (strtotime($nextDonationDate) <= time());
             background: #dc3545;
         }
 
-        .profile-container {
-            padding: 9px;
-            border-radius: 15px;
-            margin-top: 80px;
-            max-width: 1200px;
+        .profile-header-center {
             text-align: center;
+            margin-top: 80px;
+            margin-bottom: 30px;
         }
 
-        
         .profile-picture {
             width: 100px;
             height: 100px;
             border-radius: 50%;
             object-fit: cover;
             border: 4px solid #fff;
-            margin: 20px auto;
+            margin: 0 auto 15px;
             display: block;
         }
 
-        .profile-header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .profile-header h1 {
+        .profile-header-center h1 {
             font-size: 2.5rem;
             font-weight: bold;
-            color:rgb(17, 17, 17);
+            color: rgb(17, 17, 17);
+            margin-bottom: 15px;
         }
 
-        
         #status-message {
             font-size: 1.3rem;
             font-weight: bold;
             color: rgb(63, 50, 50);
-            text-align: center;
-            margin-top: 15px;
-            padding: 10px 10px;
+            padding: 12px 20px;
             border-radius: 10px;
             display: inline-block;
+        }
+
+        /* Info Cards Container */
+        .info-cards-container {
+            max-width: 1200px;
+            margin: 0 auto 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 0 20px;
         }
 
         .navbar {
@@ -230,7 +330,6 @@ $isEligible = (strtotime($nextDonationDate) <= time());
             align-items: center;
         }
 
-
         .navbar-nav .nav-item .nav-link.active {
            color:rgb(253, 253, 253) !important;
            background-color: rgba(255, 255, 255, 0.3);
@@ -242,11 +341,9 @@ $isEligible = (strtotime($nextDonationDate) <= time());
             padding: 0px 10px;
         }
 
-
         .navbar a {
             font-size: 20px;
         }
-
 
         .navbar-nav .nav-item .nav-link:hover {
             color:rgb(255, 255, 255) !important;
@@ -258,13 +355,184 @@ $isEligible = (strtotime($nextDonationDate) <= time());
             border-color: rgba(0, 0, 0, 0.5);
         }
 
+        .info-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        .info-card h3 {
+            color: #dc3545;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #dc3545;
+            padding-bottom: 8px;
+        }
+
+        .progress-bar-custom {
+            height: 25px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #dc3545, #ff6b6b);
+            transition: width 0.5s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: red;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            margin: 8px 0;
+            background: rgba(220, 53, 69, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #dc3545;
+        }
+
+        .leaderboard-item.top {
+            background: rgba(255, 215, 0, 0.2);
+            border-left-color: gold;
+        }
+
+        .leaderboard-name {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .leaderboard-count {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .reminder-item {
+            padding: 12px;
+            margin: 8px 0;
+            background: rgba(40, 167, 69, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+            color: #333;
+            font-size: 0.95rem;
+        }
+
+        .reminder-item strong {
+            color: #28a745;
+        }
+
+        /* Social Sharing */
+        .share-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .share-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .share-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .share-btn.facebook { background: #3b5998; }
+        .share-btn.twitter { background: #1da1f2; }
+        .share-btn.whatsapp { background: #25d366; }
+
+        .invite-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .invite-form input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .invite-form button {
+            padding: 10px 20px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .invite-form button:hover {
+            background: #c82333;
+        }
+
+        /* Quick Stats Cards */
+        .stats-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px auto;
+            max-width: 1200px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            border-radius: 12px;
+            padding: 20px;
+            width: 180px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card h4 {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .stat-card .stat-value {
+            font-size: 2rem;
+            color: #dc3545;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.85rem;
+            color: #888;
+        }
+
         .container-box {
             display: flex;
             flex-wrap: wrap;
             gap: 20px;
             justify-content: center;
             margin: 20px;
-            margin-top: 0px;
+            margin-top: 30px;
         }
         .card1 {
             background: #f8d7da;
@@ -285,6 +553,41 @@ $isEligible = (strtotime($nextDonationDate) <= time());
             width: 250px;
             text-align: center;
         }
+
+        .card3 {
+            background: #fff3cd;
+            color: #444;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            padding: 25px;
+            width: 520px;
+            text-align: left;
+        }
+
+        .card3 h3 {
+            color: #856404;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .compatibility-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .compatibility-item {
+            background: rgba(255, 255, 255, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #856404;
+        }
+
+        .compatibility-item strong {
+            color: #856404;
+        }
+
         .card1 h2 {
             font-size: 2.5rem;
             color: #f44336;
@@ -312,17 +615,6 @@ $isEligible = (strtotime($nextDonationDate) <= time());
             border-radius: 50%;
             animation: float 10s infinite ease-in-out;
             opacity: 0.8;
-        }
-
-        @keyframes slideDown {
-            0% {
-                opacity: 0;
-                transform: translateY(-50px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         @keyframes float {
@@ -399,6 +691,24 @@ $isEligible = (strtotime($nextDonationDate) <= time());
                 fill: rgb(255, 0, 0);
                 text-shadow: 0 0 10px rgba(255, 0, 0, 1);
             }
+        }
+
+        .alert-success, .alert-danger {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
         }
         
     </style>
@@ -482,26 +792,136 @@ $isEligible = (strtotime($nextDonationDate) <= time());
         </div>
     </nav>
 
-    <!-- Profile Content -->
-    <div class="container">
-        <div class="profile-box">
-        <div class="profile-container mx-auto">
-            <div class="profile-header">
-                <img src="<?php echo htmlspecialchars($profile_picture); ?>" alt="Profile Picture" class="profile-picture">
-                <h1>Welcome, <?php echo htmlspecialchars($name); ?></h1>
-                
-                <!-- Status Message: Shows eligibility or countdown -->
-                <p id="status-message">
-                    <?php 
-                    if ($isEligible) {
-                        echo "✔ You are eligible to donate!";
-                    } else {
-                        echo "Loading...";
-                    }
-                    ?>
-                </p>
-            </div>
+    <!-- Profile Header - Centered at Top -->
+    <div class="profile-header-center">
+        <img src="<?php echo htmlspecialchars($profile_picture); ?>" alt="Profile Picture" class="profile-picture">
+        <h1>Welcome, <?php echo htmlspecialchars($name); ?></h1>
+        
+        <!-- Status Message: Shows eligibility or countdown -->
+        <p id="status-message">
+            <?php 
+            if ($isEligible) {
+                echo " You are eligible to donate!";
+            } else {
+                echo "Loading...";
+            }
+            ?>
+        </p>
+    </div>
 
+    <!-- Info Cards Grid (2 columns) -->
+    <div class="info-cards-container">
+        <!-- Achievement Progress Bar (Left) -->
+        <div class="info-card">
+            <h3> Achievement Progress</h3>
+            <p style="color: #333; margin-bottom: 5px;">
+                <strong>Next Badge:</strong> 
+                <?php 
+                if ($totalDonations >= 20) echo "Legend (Achieved!)";
+                elseif ($totalDonations >= 10) echo "Legend at 20 donations";
+                elseif ($totalDonations >= 5) echo "Gold at 10 donations";
+                elseif ($totalDonations >= 1) echo "Silver at 5 donations";
+                else echo "Bronze at 1 donation";
+                ?>
+            </p>
+            <div class="progress-bar-custom">
+                <div class="progress-fill" style="width: <?php echo $progressPercent; ?>%;">
+                    <?php echo round($progressPercent); ?>%
+                </div>
+            </div>
+            <p style="color: #666; font-size: 0.9rem; margin-top: 5px;">
+                <?php 
+                if ($totalDonations >= 20) {
+                    echo " You've unlocked all badges!";
+                } else {
+                    $donationsNeeded = $nextBadge - $totalDonations;
+                    echo "{$donationsNeeded} more donation(s) to unlock next badge!";
+                }
+                ?>
+            </p>
+        </div>
+
+        <!-- Leaderboard (Right) -->
+        <div class="info-card">
+            <h3> Top Donors Leaderboard</h3>
+            <?php foreach ($leaderboard as $index => $donor): ?>
+                <div class="leaderboard-item <?php echo $index === 0 ? 'top' : ''; ?>">
+                    <span class="leaderboard-name">
+                        <?php echo ($index + 1) . ". " . htmlspecialchars($donor['name']); ?>
+                        <?php if ($donor['name'] === $name) echo " (You)"; ?>
+                    </span>
+                    <span class="leaderboard-count"><?php echo $donor['donation_count']; ?> donations</span>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Health Reminders (Left) -->
+        <div class="info-card">
+            <h3> Health Reminders</h3>
+            <div class="reminder-item">
+                <strong>Before Donation:</strong> Eat iron-rich foods and stay hydrated 24 hours before.
+            </div>
+            <div class="reminder-item">
+                <strong>After Donation:</strong> Rest for 10-15 minutes and drink plenty of fluids.
+            </div>
+            <div class="reminder-item">
+                <strong>Recovery:</strong> Avoid heavy exercise for 24 hours post-donation.
+            </div>
+        </div>
+
+        <!-- Social Sharing (Right) -->
+        <div class="info-card">
+            <h3> Share Your Achievement</h3>
+            <p style="color: #333; margin-bottom: 10px;">Spread the word and inspire others to donate blood!</p>
+            <div class="share-buttons">
+                <button class="share-btn facebook" onclick="shareOnFacebook()">Facebook</button>
+                <button class="share-btn twitter" onclick="shareOnTwitter()">Twitter</button>
+                <button class="share-btn whatsapp" onclick="shareOnWhatsApp()">WhatsApp</button>
+            </div>
+            
+            <h4 style="color: #333; margin-top: 20px; font-size: 1.1rem;">Invite Friends via Email</h4>
+            <form method="POST" class="invite-form">
+                <input type="email" name="invite_email" placeholder="Friend's email address" required>
+                <button type="submit">Send Invite</button>
+            </form>
+            <?php if (isset($inviteSuccess)): ?>
+                <div class="alert-success"><?php echo $inviteSuccess; ?></div>
+            <?php endif; ?>
+            <?php if (isset($inviteError)): ?>
+                <div class="alert-danger"><?php echo $inviteError; ?></div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Quick Stats Dashboard -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <h4>Days Since Last Donation</h4>
+            <div class="stat-value"><?php echo $daysSinceLastDonation; ?></div>
+            <div class="stat-label">days</div>
+        </div>
+        <div class="stat-card">
+            <h4>Total Blood Donated</h4>
+            <div class="stat-value"><?php echo $totalBloodDonated; ?></div>
+            <div class="stat-label">ml</div>
+        </div>
+        <div class="stat-card">
+            <h4>Lives Potentially Saved</h4>
+            <div class="stat-value"><?php echo $livesSaved; ?></div>
+            <div class="stat-label">lives</div>
+        </div>
+        <div class="stat-card">
+            <h4>Next Badge At</h4>
+            <div class="stat-value">
+                <?php 
+                if ($totalDonations < 1) echo "1";
+                elseif ($totalDonations < 5) echo "5";
+                elseif ($totalDonations < 10) echo "10";
+                elseif ($totalDonations < 20) echo "20";
+                else echo "20+";
+                ?>
+            </div>
+            <div class="stat-label">donations</div>
         </div>
     </div>
 
@@ -549,6 +969,49 @@ $isEligible = (strtotime($nextDonationDate) <= time());
                 echo '<img src="assets/badges/legend.png" alt="Legend Badge" title="20+ Donations">';
             }
             ?>
+        </div>
+    </div>
+
+    <!-- Blood Type Compatibility Card -->
+    <div class="card3">
+        <h3>🩸 Blood Type Compatibility</h3>
+        <div class="compatibility-grid">
+            <div class="compatibility-item">
+                <strong>You can donate to:</strong>
+                <p style="margin: 5px 0; color: #333;">
+                    <?php
+                    $canDonateTo = [
+                        'A+' => 'A+, AB+',
+                        'A-' => 'A+, A-, AB+, AB-',
+                        'B+' => 'B+, AB+',
+                        'B-' => 'B+, B-, AB+, AB-',
+                        'AB+' => 'AB+',
+                        'AB-' => 'AB+, AB-',
+                        'O+' => 'A+, B+, AB+, O+',
+                        'O-' => 'All Blood Types'
+                    ];
+                    echo $canDonateTo[$bloodtype] ?? 'N/A';
+                    ?>
+                </p>
+            </div>
+            <div class="compatibility-item">
+                <strong>You can receive from:</strong>
+                <p style="margin: 5px 0; color: #333;">
+                    <?php
+                    $canReceiveFrom = [
+                        'A+' => 'A+, A-, O+, O-',
+                        'A-' => 'A-, O-',
+                        'B+' => 'B+, B-, O+, O-',
+                        'B-' => 'B-, O-',
+                        'AB+' => 'All Blood Types',
+                        'AB-' => 'A-, B-, AB-, O-',
+                        'O+' => 'O+, O-',
+                        'O-' => 'O-'
+                    ];
+                    echo $canReceiveFrom[$bloodtype] ?? 'N/A';
+                    ?>
+                </p>
+            </div>
         </div>
     </div>
 </div>
