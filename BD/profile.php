@@ -15,17 +15,17 @@ try {
 
     // Count total donations
     $stmt = $pdo->prepare("SELECT id FROM donors WHERE user_id = ? ORDER BY id DESC LIMIT 1");
-$stmt->execute([$userId]);
-$donor_id = $stmt->fetchColumn();
+    $stmt->execute([$userId]);
+    $donor_id = $stmt->fetchColumn();
 
-$totalDonations = 0;
+    $totalDonations = 0;
 
-if ($donor_id) {
-    // Now count donations using donor_id
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM donations WHERE donor_id = ?");
-    $stmt->execute([$donor_id]);
-    $totalDonations = $stmt->fetchColumn();
-}
+    if ($donor_id) {
+        // Now count donations using donor_id
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM donations WHERE donor_id = ?");
+        $stmt->execute([$donor_id]);
+        $totalDonations = $stmt->fetchColumn();
+    }
 
 } catch (PDOException $e) {
     $totalDonations = 0;
@@ -55,30 +55,133 @@ $isEligible = (strtotime($nextDonationDate) <= time());
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-
     <title>User Profile</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        /* General body styling */
+        
         body {
             background: radial-gradient(circle,rgb(255, 99, 90) 0%,rgb(241, 33, 33) 100%);
             color: #fff;
             font-family: Arial, sans-serif;
         }
 
-        /* Profile container */
-        .profile-container {
-            /*background-color: rgba(255, 255, 255, 0.1);*/
-            padding: 9px;
-            border-radius: 15px;
-            /*box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);*/
-            margin-top: 80px;
-            max-width: 1200px;
-            /*border: 3px solid #f2f2f2; /* Highlight border */
+        
+        .sidebar {
+            position: fixed;
+            left: -350px;
+            top: 75px;
+            width: 320px;
+            height: calc(75% - 70px);
+            background: #111;
+            padding: 25px;
+            transition: 0.4s;
+            z-index: 1050;
+            overflow-y: auto;
         }
 
-        /* Profile picture styling */
+        .sidebar.active {
+            left: 0;
+        }
+
+        .sidebar h5 {
+            color: #fff;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        .sidebar hr {
+            background-color: #dc3545;
+            height: 2px;
+        }
+
+        .sidebar p {
+            margin: 12px 0;
+            font-size: 15px;
+            color: #ccc;
+            line-height: 1.6;
+        }
+
+        .sidebar strong {
+            color: #dc3545;
+            display: inline-block;
+            min-width: 120px;
+        }
+
+        .sidebar .eligibility-status {
+            background: <?php echo $isEligible ? '#28a745' : '#dc3545'; ?>;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            display: inline-block;
+            margin-top: 5px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .sidebar .donate-btn-sidebar {
+            background: <?php echo $isEligible ? '#28a745' : '#6c757d'; ?>;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            display: block;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 15px;
+            pointer-events: <?php echo $isEligible ? 'auto' : 'none'; ?>;
+        }
+
+        .sidebar .donate-btn-sidebar:hover {
+            background: <?php echo $isEligible ? '#218838' : '#6c757d'; ?>;
+            color: white;
+            text-decoration: none;
+        }
+
+        
+        .profile-toggle {
+            position: fixed;
+            top: 85px;
+            left: 15px;
+            width: 42px;
+            height: 42px;
+            background: #111;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 1100;
+            transition: 0.4s;
+            border: 2px solid #dc3545;
+        }
+
+        .profile-toggle span {
+            width: 22px;
+            height: 3px;
+            background: #fff;
+            margin: 3px 0;
+            transition: 0.3s;
+        }
+
+        .profile-toggle.active {
+            left: 335px;
+        }
+
+        .profile-toggle:hover span {
+            background: #dc3545;
+        }
+
+        .profile-container {
+            padding: 9px;
+            border-radius: 15px;
+            margin-top: 80px;
+            max-width: 1200px;
+            text-align: center;
+        }
+
+        
         .profile-picture {
             width: 100px;
             height: 100px;
@@ -87,123 +190,29 @@ $isEligible = (strtotime($nextDonationDate) <= time());
             border: 4px solid #fff;
             margin: 20px auto;
             display: block;
-            position: relative;
-            top: 10px;
-            right: 525px;
         }
 
         .profile-header {
-            text-align: left;
+            text-align: center;
             margin-bottom: 20px;
         }
 
         .profile-header h1 {
             font-size: 2.5rem;
             font-weight: bold;
-            color:rgb(17, 17, 17); /* Highlight profile text color */
-            position: relative;
-            bottom: 1px;
-            right: 30px;
+            color:rgb(17, 17, 17);
         }
 
-        .profile-details p {
-            font-family: josefin sans;
-            font-size: 1.7rem;
-            margin: 3px 0;
-            text-align: left;
-            position: relative;
-            right: 30px;
-            bottom: 10px;
-            color:rgb(0, 0, 0);
-        }
-
-        .profile-details p strong {
-            color:rgb(0, 0, 0);
-            font-family: Arial;
-        }
-
-        .btn-primary {
-            background-color: rgb(255, 135, 135);
-            border: 1px solid rgb(0, 0, 0);
-            color: black;
-            font-size: 1.3rem;
-            font-weight: bold;
-            padding: 10px 80px;
-            border-radius: 25px;
-            margin-left: 800px;
-            position: relative;
-            bottom: 100px;
-            right: 850px;
-        }
-
-        .btn-primary:hover {
-            background-color: lightgreen;
-            color: black;
-        }
-
-        .btn-success {
-            background-color: rgb(236, 202, 176);
-            border: 1px solid rgb(0, 0, 0);
-            font-size: 1.3rem;
-            color: black;
-            font-weight: bold;
-            padding: 10px 50px;
-            border-radius: 25px;
-            margin-left: 800px;
-            position: relative;
-            bottom: 159px;
-            right: 550px;
-        }
-
-        .btn-success:hover {
-            background-color: lightgreen;
-            color: black;
-        }
         
-
-        /* Eligibility Box */
-        .eligibility-box {
-            background: <?php echo $isEligible ? '#dff0d8' : '#f8d7da'; ?>;
-            color: <?php echo $isEligible ? '#3c763d' : '#721c24'; ?>;
-            padding: 15px;
+        #status-message {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: rgb(63, 50, 50);
+            text-align: center;
+            margin-top: 15px;
+            padding: 10px 10px;
             border-radius: 10px;
-            font-weight: bold;
             display: inline-block;
-            margin-top: 10px;
-            margin-left: 650px;
-            font-size: 1.2rem;
-            position: relative;
-            top: 100px;
-            right: 240px;
-        }
-
-        .eligibility-btn {
-            background: <?php echo $isEligible ? '#4CAF50' : '#dc3545'; ?>;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 5px;
-            cursor: default;
-        }
-
-        .donated-btn {
-            margin-left: 15px;
-            padding: 8px 15px;
-            font-size: 16px;
-            border-radius: 5px;
-            border: none;
-            cursor: pointer;
-            text-decoration: none;
-            background: <?php echo $isEligible ? '#28a745' : '#6c757d'; ?>;
-            color: white;
-            pointer-events: <?php echo $isEligible ? 'auto' : 'none'; ?>;
-        }
-
-        .donated-btn:hover {
-            background: <?php echo $isEligible ? 'white' : '#6c757d'; ?>;
-            color: black;
         }
 
         .navbar {
@@ -255,6 +264,7 @@ $isEligible = (strtotime($nextDonationDate) <= time());
             gap: 20px;
             justify-content: center;
             margin: 20px;
+            margin-top: 0px;
         }
         .card1 {
             background: #f8d7da;
@@ -264,9 +274,6 @@ $isEligible = (strtotime($nextDonationDate) <= time());
             padding: 30px;
             width: 250px;
             text-align: center;
-            position: relative;
-            bottom: 580px;
-            left: 350px;
         }
 
         .card2 {
@@ -277,9 +284,6 @@ $isEligible = (strtotime($nextDonationDate) <= time());
             padding: 25px;
             width: 250px;
             text-align: center;
-            position: relative;
-            bottom: 580px;
-            left: 350px;
         }
         .card1 h2 {
             font-size: 2.5rem;
@@ -400,6 +404,31 @@ $isEligible = (strtotime($nextDonationDate) <= time());
     </style>
 </head>
 <body>
+
+<!-- Toggle Button -->
+<div class="profile-toggle" onclick="toggleSidebar()">
+    <span></span>
+    <span></span>
+    <span></span>
+</div>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <h5>Profile Details</h5>
+    <hr>
+    <p><strong>Contact:</strong> <?php echo htmlspecialchars($contact); ?></p>
+    <p><strong>Blood Type:</strong> <?php echo htmlspecialchars($bloodtype); ?></p>
+    <p><strong>Location:</strong> <?php echo htmlspecialchars($location); ?></p>
+    <p><strong>Last Donation:</strong> <?php echo htmlspecialchars($lastdonationdate); ?></p>
+    <p><strong>Next Eligible:</strong> <?php echo htmlspecialchars($nextDonationDate); ?></p>
+    <p><strong>Email:</strong> <?php echo htmlspecialchars($email); ?></p>
+    <p><strong>Eligibility:</strong> <span class="eligibility-status" id="sidebar-eligibility"><?php echo $isEligible ? '✔ Eligible' : '✘ Not Eligible'; ?></span></p>
+
+    <a href="donations.php" class="donate-btn-sidebar" id="donate-btn-sidebar">Donate Now</a>
+    <a href="profile_edit.php" class="btn btn-primary btn-sm w-100 mt-3">Edit Profile</a>
+    <a href="donations_list.php" class="btn btn-success btn-sm w-100 mt-2">Donation History</a>
+</div>
+
 <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <a class="navbar-brand">
             <div class="logo-container">
@@ -460,70 +489,19 @@ $isEligible = (strtotime($nextDonationDate) <= time());
             <div class="profile-header">
                 <img src="<?php echo htmlspecialchars($profile_picture); ?>" alt="Profile Picture" class="profile-picture">
                 <h1>Welcome, <?php echo htmlspecialchars($name); ?></h1>
+                
+                <!-- Status Message: Shows eligibility or countdown -->
+                <p id="status-message">
+                    <?php 
+                    if ($isEligible) {
+                        echo "✔ You are eligible to donate!";
+                    } else {
+                        echo "Loading...";
+                    }
+                    ?>
+                </p>
             </div>
-            <div class="profile-details">
-                <p><strong>Contact:</strong> <?php echo htmlspecialchars($contact); ?></p>
-                <p><strong>Blood Type:</strong> <?php echo htmlspecialchars($bloodtype); ?></p>
-                <p><strong>Location:</strong> <?php echo htmlspecialchars($location); ?></p>
-                <p><strong>Last Donation Date:</strong> <?php echo htmlspecialchars($lastdonationdate); ?></p>
-                <p><strong>Next Eligible Donation Date:</strong> <?php echo htmlspecialchars($nextDonationDate); ?></p>
-                <p><strong>Email:</strong> <?php echo htmlspecialchars($email); ?></p>
-            </div>
-                <!-- Real-Time Countdown Timer -->
-<p id="countdown" style="font-size: 1.4rem; font-weight: bold; color:rgb(63, 50, 50); position: relative; top: 240px; left: 70px; text-align: center"></p>
 
-<!-- Eligibility Box -->
-<div class="eligibility-box" id="eligibility-box">
-    <span>Eligibility Status:</span>
-    <button class="eligibility-btn" id="eligibility-btn" disabled>
-        <?php echo $isEligible ? "✔ Eligible" : "✘ Not Eligible"; ?>
-    </button>
-    <!-- Donate Button -->
-    <a href="donations.php" class="donated-btn" id="donate-btn">
-        Donate
-    </a>
-</div>
-
-<script>
-    function updateCountdown() {
-        const nextDonationDate = new Date("<?php echo $nextDonationDate; ?>").getTime();
-        const now = new Date().getTime();
-        const timeLeft = nextDonationDate - now;
-
-        const countdownElement = document.getElementById("countdown");
-        const eligibilityBox = document.getElementById("eligibility-box");
-        const eligibilityBtn = document.getElementById("eligibility-btn");
-        const donateBtn = document.getElementById("donate-btn");
-
-        if (timeLeft > 0) {
-            const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-
-            countdownElement.innerText = `Next donation in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
-            eligibilityBtn.innerText = "✘ Not Eligible";
-            donateBtn.style.pointerEvents = "none"; // Disable donate button
-            donateBtn.style.background = "#6c757d";
-        } else {
-            countdownElement.innerText = "Now you are eligible to donate!";
-            eligibilityBox.style.background = "#dff0d8";  // Green background
-            eligibilityBtn.innerText = "✔ Eligible";
-            eligibilityBtn.style.background = "#4CAF50";
-            donateBtn.style.pointerEvents = "auto"; // Enable donate button
-            donateBtn.style.background = "#28a745";
-        }
-    }
-
-    // Update the countdown every second
-    setInterval(updateCountdown, 1000);
-    updateCountdown(); // Initial call
-</script>
-
-            <div class="text-center mt-4">
-                <a href="profile_edit.php" class="btn btn-primary mb-2">Edit Profile</a>
-                <a href="donations_list.php" class="btn btn-success">Donations History</a>
-            </div>
         </div>
     </div>
 
@@ -588,7 +566,55 @@ $isEligible = (strtotime($nextDonationDate) <= time());
         <div class="drop" style="left: 90%; animation-delay: 4s;"></div>
     </div>
 
+<script>
+    function updateCountdown() {
+        const nextDonationDate = new Date("<?php echo $nextDonationDate; ?>").getTime();
+        const now = new Date().getTime();
+        const timeLeft = nextDonationDate - now;
 
+        const statusMessage = document.getElementById("status-message");
+        const sidebarEligibility = document.getElementById("sidebar-eligibility");
+        const donateBtnSidebar = document.getElementById("donate-btn-sidebar");
+
+        if (timeLeft > 0) {
+            // Not eligible - show countdown timer
+            const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+            statusMessage.innerText = `Next donation in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+            statusMessage.style.background = "#f8d7da";
+            statusMessage.style.color = "#721c24";
+            
+            // Update sidebar
+            sidebarEligibility.innerText = "✘ Not Eligible";
+            sidebarEligibility.style.background = "#dc3545";
+            donateBtnSidebar.style.pointerEvents = "none";
+            donateBtnSidebar.style.background = "#6c757d";
+        } else {
+            // Eligible - show eligibility message
+            statusMessage.innerText = "✔ You are eligible to donate!";
+            statusMessage.style.background = "#dff0d8";
+            statusMessage.style.color = "#155724";
+            
+            // Update sidebar
+            sidebarEligibility.innerText = "✔ Eligible";
+            sidebarEligibility.style.background = "#28a745";
+            donateBtnSidebar.style.pointerEvents = "auto";
+            donateBtnSidebar.style.background = "#28a745";
+        }
+    }
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
+        document.querySelector('.profile-toggle').classList.toggle('active');
+    }
+
+    // Update the countdown every second
+    setInterval(updateCountdown, 1000);
+    updateCountdown(); // Initial call
+</script>
 
 </body>
 </html>
