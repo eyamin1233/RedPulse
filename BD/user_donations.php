@@ -39,7 +39,7 @@ try {
         $donationsStmt = $conn->prepare("
             SELECT d.donated_at, r.recipient_name, r.bloodtype, r.contact, r.location, r.received_date
             FROM donations d
-            LEFT JOIN recipient r ON d.request_id = r.request_id
+            LEFT JOIN recipient r ON d.recipient_id = r.id
             WHERE d.donor_id = ?
             ORDER BY d.donated_at DESC
         ");
