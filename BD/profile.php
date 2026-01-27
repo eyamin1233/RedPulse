@@ -171,7 +171,7 @@ RedPulse Team";
             left: -350px;
             top: 75px;
             width: 320px;
-            height: calc(80% - 70px);
+            height: calc(100% - 70px);
             background: #111;
             padding: 25px;
             transition: 0.4s;
