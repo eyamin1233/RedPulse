@@ -202,9 +202,9 @@ body {
 .sidebar {
     position: fixed;
     left: -320px;
-    top: 80px; 
+    top: 75px; 
     width: 300px;
-    height: calc(50% - 70px);
+    height: calc(100% - 70px);
     background: #111;
     padding: 25px;
     transition: 0.4s ease;
