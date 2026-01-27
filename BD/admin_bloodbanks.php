@@ -298,7 +298,7 @@ try {
         <a class="nav-link" href="admin_profile.php">Dashboard</a>
     </li>
     <li class="nav-item">
-        <a class="nav-link active" href="amin_bloodbanks.php">Blood Banks</a>
+        <a class="nav-link active" href="admin_bloodbanks.php">Blood Banks</a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="users.php">Users</a>
